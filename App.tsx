@@ -7,7 +7,7 @@ import { extractDataFromImage } from './services/geminiService';
 import { fileToBase64 } from './utils/fileUtils';
 import { exportToExcel } from './utils/excelUtils';
 import { ExtractedDataRow, ProcessingStatus } from './types';
-import { Download, RotateCcw, AlertCircle, FileText, Copy, Check } from 'lucide-react';
+import { Download, RotateCcw, AlertTriangle, FileText, Copy, Check, Sparkles, Image as ImageIcon } from 'lucide-react';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<ProcessingStatus>('idle');
@@ -33,16 +33,13 @@ const App: React.FC = () => {
     setHeaders([]);
     setCopySuccess(false);
     
-    // Set previews
     const newPreviewUrls = files.map(file => URL.createObjectURL(file));
     setPreviewUrls(newPreviewUrls);
     
-    // Set filename based on the first file + count if multiple
     const baseName = files[0].name.replace(/\.[^/.]+$/, "");
     setFileName(files.length > 1 ? `${baseName}_batch_${files.length}` : baseName);
 
     try {
-      // Process all images in parallel
       const processingPromises = files.map(async (file) => {
         const base64 = await fileToBase64(file);
         return await extractDataFromImage(base64, file.type);
@@ -50,18 +47,16 @@ const App: React.FC = () => {
 
       const results = await Promise.all(processingPromises);
 
-      // Aggregate data
       let aggregatedData: ExtractedDataRow[] = [];
       let detectedHeaders: string[] = [];
 
       results.forEach((result) => {
         if (result.headers.length > 0) {
-          detectedHeaders = result.headers; // Assume headers are consistent across successful extractions
+          detectedHeaders = result.headers;
         }
         aggregatedData = [...aggregatedData, ...result.data];
       });
 
-      // Post-process: Re-index the "序号" (No.) column
       const reIndexedData = aggregatedData.map((row, index) => ({
         ...row,
         "序号": index + 1
@@ -79,19 +74,16 @@ const App: React.FC = () => {
   }, []);
 
   const handleExport = () => {
-    // Pass headers to ensure correct column order in Excel
     exportToExcel(data, headers, `${fileName}_processed`);
   };
 
   const handleCopy = async () => {
     if (data.length === 0) return;
 
-    // Create Tab-Separated Values (TSV) string for Excel compatibility
     const headerRow = headers.join('\t');
     const bodyRows = data.map(row => 
       headers.map(header => {
         const val = row[header];
-        // Ensure content doesn't break format by replacing tabs/newlines within cells
         return val === null || val === undefined ? '' : String(val).replace(/\t/g, ' ').replace(/\n/g, ' ');
       }).join('\t')
     ).join('\n');
@@ -117,42 +109,60 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-slate-50 relative selection:bg-emerald-100 selection:text-emerald-900">
+      {/* Background Decor */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-emerald-200/20 blur-3xl"></div>
+        <div className="absolute top-[10%] -right-[10%] w-[40%] h-[40%] rounded-full bg-blue-200/20 blur-3xl"></div>
+      </div>
+
       <Header />
 
-      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-12 pt-28 relative z-10">
         
         {/* Intro / Empty State */}
         {status === 'idle' && (
-          <div className="max-w-3xl mx-auto space-y-8">
-            <div className="text-center space-y-4">
-              <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-                Turn Images into Excel Sheets
+          <div className="max-w-4xl mx-auto space-y-12 animate-fade-in">
+            <div className="text-center space-y-6">
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-white border border-slate-200 shadow-sm text-sm font-medium text-slate-600 mb-4 animate-slide-up">
+                <Sparkles className="w-4 h-4 text-emerald-500 mr-2" />
+                <span>Powered by Gemini 2.5 AI</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-bold text-slate-900 tracking-tight leading-tight">
+                Transform Image Tables into <br className="hidden md:block"/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500">Actionable Excel Data</span>
               </h2>
-              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                Upload photos of lists, rosters, or tables. Our AI will identify individual records and organize them into a clean, downloadable spreadsheet.
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+                Stop manual typing. Upload screenshots of influencer lists, rosters, or financial tables, and let AI structure them for you instantly.
               </p>
             </div>
-            <UploadZone onFileSelect={handleFileSelect} isProcessing={false} />
+            
+            <div className="bg-white p-2 rounded-3xl shadow-soft">
+               <UploadZone onFileSelect={handleFileSelect} isProcessing={false} />
+            </div>
           </div>
         )}
 
         {/* Processing State */}
         {status === 'processing' && (
-          <div className="max-w-3xl mx-auto space-y-8 animate-pulse">
+          <div className="max-w-3xl mx-auto space-y-12">
             <div className="text-center space-y-4">
-              <h2 className="text-2xl font-semibold text-gray-900">Processing {previewUrls.length} image{previewUrls.length > 1 ? 's' : ''}...</h2>
-              <p className="text-gray-500">AI is extracting data and combining results.</p>
+               <div className="inline-flex items-center justify-center p-3 bg-emerald-50 rounded-full mb-4">
+                  <Sparkles className="w-8 h-8 text-emerald-500 animate-pulse" />
+               </div>
+              <h2 className="text-2xl font-bold text-slate-900">Analyzing your data...</h2>
+              <p className="text-slate-500">We're reading {previewUrls.length} image{previewUrls.length > 1 ? 's' : ''} and organizing the rows.</p>
             </div>
              {previewUrls.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 opacity-75">
                   {previewUrls.map((url, idx) => (
-                    <div key={idx} className="relative rounded-lg overflow-hidden h-32 w-full bg-gray-200 flex items-center justify-center">
-                      <img src={url} alt={`Preview ${idx}`} className="h-full w-full object-contain opacity-50" />
+                    <div key={idx} className="relative rounded-2xl overflow-hidden aspect-[4/3] bg-white shadow-sm border border-slate-100 group">
+                      <div className="absolute inset-0 bg-slate-900/5 group-hover:bg-slate-900/0 transition-colors"></div>
+                      <img src={url} alt={`Preview ${idx}`} className="h-full w-full object-cover" />
                       {idx === 0 && (
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="bg-white/80 p-4 rounded-full shadow-lg">
-                              <RotateCcw className="h-8 w-8 text-primary animate-spin" />
+                        <div className="absolute inset-0 flex items-center justify-center backdrop-blur-[2px]">
+                            <div className="bg-white p-4 rounded-full shadow-lg">
+                              <RotateCcw className="h-6 w-6 text-primary animate-spin" />
                             </div>
                         </div>
                       )}
@@ -165,79 +175,83 @@ const App: React.FC = () => {
 
         {/* Error State */}
         {status === 'error' && (
-          <div className="max-w-2xl mx-auto">
-             <div className="rounded-md bg-red-50 p-4 mb-6 border border-red-200">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <AlertCircle className="h-5 w-5 text-red-400" aria-hidden="true" />
-                </div>
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">Processing Error</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
+          <div className="max-w-xl mx-auto text-center space-y-6">
+             <div className="rounded-2xl bg-red-50 p-6 border border-red-100 shadow-sm">
+               <div className="flex flex-col items-center">
+                  <div className="p-3 bg-red-100 rounded-full mb-4">
+                    <AlertTriangle className="h-8 w-8 text-red-500" />
                   </div>
-                </div>
-              </div>
+                  <h3 className="text-lg font-semibold text-red-900">Processing Error</h3>
+                  <p className="mt-2 text-sm text-red-700 text-center leading-relaxed">{error}</p>
+               </div>
             </div>
-            <div className="flex justify-center">
-                <Button onClick={handleReset} variant="outline" icon={<RotateCcw className="h-4 w-4" />}>
-                    Try Again
-                </Button>
-            </div>
+            <Button onClick={handleReset} variant="outline" icon={<RotateCcw className="h-4 w-4" />}>
+                Try Again
+            </Button>
           </div>
         )}
 
         {/* Success / Result State */}
         {status === 'success' && (
-          <div className="space-y-6">
+          <div className="space-y-6 animate-fade-in">
             
             {/* Toolbar */}
-            <div className="bg-white rounded-lg shadow-sm p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <div className="flex items-center space-x-3">
-                <div className="bg-emerald-100 p-2 rounded-lg">
+            <div className="bg-white rounded-xl shadow-soft p-4 md:p-5 border border-slate-200/60 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 sticky top-20 z-40 backdrop-blur-sm bg-white/90">
+              <div className="flex items-center space-x-4">
+                <div className="bg-gradient-to-br from-emerald-100 to-teal-100 p-2.5 rounded-lg border border-emerald-100">
                     <FileText className="h-6 w-6 text-emerald-600" />
                 </div>
                 <div>
-                    <h3 className="font-medium text-gray-900">Extraction Complete</h3>
-                    <p className="text-sm text-gray-500">{data.length} records found from {previewUrls.length} file{previewUrls.length > 1 ? 's' : ''}</p>
+                    <h3 className="font-bold text-slate-900">Extraction Complete</h3>
+                    <p className="text-sm text-slate-500 font-medium">
+                      Found <span className="text-emerald-600">{data.length}</span> rows in {previewUrls.length} file{previewUrls.length > 1 ? 's' : ''}
+                    </p>
                 </div>
               </div>
               
-              <div className="flex space-x-3 w-full sm:w-auto">
-                <Button onClick={handleReset} variant="outline" className="flex-1 sm:flex-none">
+              <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <Button onClick={handleReset} variant="ghost" className="flex-1 md:flex-none">
                   New Scan
                 </Button>
+                <div className="h-6 w-px bg-slate-200 hidden md:block"></div>
                 <Button 
                   onClick={handleCopy} 
                   variant="outline" 
-                  icon={copySuccess ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  className="flex-1 sm:flex-none"
+                  icon={copySuccess ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                  className="flex-1 md:flex-none"
                 >
-                  {copySuccess ? 'Copied!' : 'Copy Data'}
+                  {copySuccess ? 'Copied!' : 'Copy'}
                 </Button>
-                <Button onClick={handleExport} variant="primary" icon={<Download className="h-4 w-4" />} className="flex-1 sm:flex-none">
-                  Download Excel
+                <Button onClick={handleExport} variant="primary" icon={<Download className="h-4 w-4" />} className="flex-1 md:flex-none shadow-emerald-500/20 shadow-lg">
+                  Export Excel
                 </Button>
               </div>
             </div>
 
-            {/* Content Split: Image Preview (Collapsible/Small) and Data Table */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left: Image Preview */}
-                <div className="lg:col-span-1">
-                    <div className="bg-white rounded-lg shadow-sm overflow-hidden sticky top-24">
-                        <div className="p-4 border-b border-gray-100 bg-gray-50">
-                            <h4 className="font-medium text-gray-700 text-sm">Original Images ({previewUrls.length})</h4>
+            {/* Split View */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Left: Sources (Sticky Sidebar) */}
+                <div className="lg:col-span-3 lg:sticky lg:top-44 space-y-4">
+                    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                            <h4 className="font-semibold text-slate-700 text-xs uppercase tracking-wider">Source Images</h4>
+                            <span className="text-xs bg-slate-200 px-2 py-0.5 rounded-full text-slate-600">{previewUrls.length}</span>
                         </div>
-                        <div className="p-4 bg-gray-100 space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                        <div className="p-3 space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar bg-slate-50/30">
                             {previewUrls.map((url, idx) => (
-                                <div key={idx} className="rounded border border-gray-200 bg-white p-1">
-                                    <div className="text-xs text-gray-400 mb-1 px-1">Image {idx + 1}</div>
-                                    <img 
-                                        src={url} 
-                                        alt={`Original ${idx + 1}`} 
-                                        className="w-full h-auto object-contain rounded" 
-                                    />
+                                <div key={idx} className="group relative rounded-lg border border-slate-200 bg-white p-2 hover:border-emerald-300 transition-colors shadow-sm">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase">Img {idx + 1}</span>
+                                      <ImageIcon className="w-3 h-3 text-slate-300" />
+                                    </div>
+                                    <div className="aspect-w-16 aspect-h-9 rounded overflow-hidden bg-slate-100">
+                                      <img 
+                                          src={url} 
+                                          alt={`Original ${idx + 1}`} 
+                                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                      />
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -245,7 +259,7 @@ const App: React.FC = () => {
                 </div>
 
                 {/* Right: Data Table */}
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-9">
                     <DataTable data={data} headers={headers} />
                 </div>
             </div>
