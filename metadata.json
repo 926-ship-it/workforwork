@@ -1,0 +1,5 @@
+{
+  "name": "Image to Excel Extractor",
+  "description": "Extract structured data from images containing lists or personal information and convert it directly into Excel format using Gemini AI.",
+  "requestFramePermissions": []
+}
